@@ -6,6 +6,9 @@ on:
       - "**"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -27,6 +30,15 @@ jobs:
           name: SmartTrade-apk
           path: SmartTrade-*.apk
           retention-days: 30
+      - name: Publish the APK as the "latest" release (direct download link)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp SmartTrade-${{ github.sha }}.apk SmartTrade.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest SmartTrade.apk --title "SmartTrade (latest build)" \
+            --notes "Built from ${{ github.sha }}. Install SmartTrade.apk on your phone." --latest
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
