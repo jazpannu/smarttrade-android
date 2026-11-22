@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.SmartTrade" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#0f1420</item>
+        <item name="android:statusBarColor">#171d2d</item>
+        <item name="android:navigationBarColor">#171d2d</item>
+    </style>
+</resources>
