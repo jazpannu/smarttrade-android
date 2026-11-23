@@ -183,7 +183,7 @@ private fun SecurityTab(lock: LockViewModel, verify: (String, () -> Unit) -> Uni
             checked = lock.enabled, enabled = lock.enabled || reason == null,
             // Both turning it on and off need a successful check, so only the phone's owner can change it.
             onCheckedChange = { on ->
-                verify(if (on) "Turn on app lock" else "Turn off app lock") { lock.setEnabled(on) }
+                verify(if (on) "Turn on app lock" else "Turn off app lock") { lock.changeEnabled(on) }
             },
         )
     }

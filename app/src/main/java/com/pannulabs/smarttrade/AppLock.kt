@@ -38,7 +38,7 @@ class LockViewModel(app: Application) : AndroidViewModel(app) {
     /** The prompt is shown automatically once per lock; after a cancel the user taps Unlock. */
     var autoPrompted = false
 
-    fun setEnabled(on: Boolean) {
+    fun changeEnabled(on: Boolean) {
         enabled = on
         prefs.edit().putBoolean("enabled", on).apply()
         if (!on) locked = false
