@@ -12,15 +12,30 @@ android {
         applicationId = "com.pannulabs.smarttrade"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.1.1"
+    }
+
+    // One fixed release key, so every new APK installs over the previous one as an update.
+    // CI writes the keystore from the SIGNING_KEYSTORE_B64 / SIGNING_PASSWORD repo secrets.
+    val keystoreFile = System.getenv("SIGNING_KEYSTORE")?.let { file(it) }
+    val signingPassword = System.getenv("SIGNING_PASSWORD")
+    signingConfigs {
+        if (keystoreFile != null && keystoreFile.exists() && !signingPassword.isNullOrEmpty()) {
+            create("release") {
+                storeFile = keystoreFile
+                storePassword = signingPassword
+                keyAlias = "smarttrade"
+                keyPassword = signingPassword
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Signed with the debug key so the CI build installs directly. Use your own key before the Play Store.
-            signingConfig = signingConfigs.getByName("debug")
+            // Local builds without the key fall back to the debug key (those cannot update a CI-installed app).
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
     compileOptions {

@@ -21,7 +21,19 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
+      - name: Write the signing key
+        env:
+          SIGNING_KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$SIGNING_KEYSTORE_B64" ]; then
+            echo "::error::Add the SIGNING_KEYSTORE_B64 and SIGNING_PASSWORD repo secrets (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          echo "$SIGNING_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
       - name: Build APK
+        env:
+          SIGNING_KEYSTORE: ${{ runner.temp }}/release.jks
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: ./gradlew --no-daemon assembleRelease
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release.apk SmartTrade-${{ github.sha }}.apk

@@ -17,8 +17,9 @@ encrypted with the Android Keystore. Revoke a phone with `smarttrade-admin revok
 - GitHub Actions builds the APK on every push (Actions tab > latest run > artifact `SmartTrade-apk`).
 - Or open this folder in Android Studio and use Build > Build APK(s).
 
-The release build is signed with the debug key so it installs directly; use your own signing key before
-publishing to the Play Store.
+The release APK is signed with a fixed key stored in the repo secrets `SIGNING_KEYSTORE_B64` (base64 of the .jks)
+and `SIGNING_PASSWORD` (key alias `smarttrade`), so each new build installs as an update. Keep a backup of the
+.jks file and password: an app signed with a different key cannot update an installed one.
 
 Test fixtures in `app/src/test/resources` were recorded from the engine's test suite with fake data and a fake
 token; they contain no real keys or account data.
