@@ -38,6 +38,10 @@ import androidx.compose.ui.unit.sp
 import com.pannulabs.smarttrade.ConnState
 import com.pannulabs.smarttrade.Conn
 import com.pannulabs.smarttrade.EngineState
+import com.pannulabs.smarttrade.LockViewModel
+import com.pannulabs.smarttrade.Biometric
+import androidx.compose.material3.Switch
+import androidx.compose.ui.platform.LocalContext
 import com.pannulabs.smarttrade.num
 import com.pannulabs.smarttrade.numOrNull
 import com.pannulabs.smarttrade.str
@@ -50,12 +54,13 @@ fun SettingsScreen(
     onConnect: (String) -> String?, onDisconnect: (Boolean) -> Unit,
     onSave: (String, JSONObject) -> Unit, onSaveKeys: (String, String, () -> Unit) -> Unit,
     toast: (String) -> Unit,
+    lock: LockViewModel, verify: (String, () -> Unit) -> Unit,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(if (hasCode) 1 else 0) }
     val connected = conn.state == ConnState.CONNECTED
     Column(Modifier.fillMaxSize()) {
         ScrollableTabRow(selectedTabIndex = tab, containerColor = Bg, contentColor = TextC, edgePadding = 8.dp) {
-            listOf("Connection", "Trading", "Scanner", "Binance API").forEachIndexed { i, t ->
+            listOf("Connection", "Trading", "Scanner", "Binance API", "Security").forEachIndexed { i, t ->
                 Tab(selected = i == tab, onClick = { tab = i }, text = { Text(t, fontSize = 13.sp) })
             }
         }
@@ -68,6 +73,7 @@ fun SettingsScreen(
                 1 -> if (connected) TradingTab(st, onSave, toast) else NeedEngine()
                 2 -> if (connected) ScannerTab(st, onSave, toast) else NeedEngine()
                 3 -> if (connected) KeysTab(st, onSaveKeys, toast) else NeedEngine()
+                4 -> SecurityTab(lock, verify)
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -159,6 +165,39 @@ private fun ConnectionTab(conn: Conn, hasCode: Boolean, onConnect: (String) -> S
             "sudo smarttrade-admin pair MyPhone --host YOUR_SERVER_IP\n\n" +
             "The connection is encrypted and locked to your server's certificate. The code is stored encrypted on " +
             "this phone. Closing the app never stops the engine on your server."
+    )
+}
+
+// ---- security (stored on this phone only, never sent to the engine) ----------------------------------------
+@Composable
+private fun SecurityTab(lock: LockViewModel, verify: (String, () -> Unit) -> Unit) {
+    val ctx = LocalContext.current
+    val reason = remember { Biometric.unavailableReason(ctx) }
+    H1("App lock")
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text("Biometric unlock", color = TextC, fontSize = 15.sp)
+            MutedText("Ask for fingerprint or face (or your phone PIN) to open this app")
+        }
+        Switch(
+            checked = lock.enabled, enabled = lock.enabled || reason == null,
+            // Both turning it on and off need a successful check, so only the phone's owner can change it.
+            onCheckedChange = { on ->
+                verify(if (on) "Turn on app lock" else "Turn off app lock") { lock.setEnabled(on) }
+            },
+        )
+    }
+    reason?.let { if (!lock.enabled) Text(it, color = Amber, fontSize = 13.sp) }
+    if (lock.enabled) {
+        Choice(
+            "Lock again after the app is in the background for",
+            listOf(0 to "Immediately", 60 to "1 minute", 300 to "5 minutes", 900 to "15 minutes"),
+            lock.delaySec,
+        ) { lock.setDelay(it) }
+    }
+    MutedText(
+        "The lock only protects this app on this phone. The engine keeps trading on your server while the app is " +
+            "locked. While the lock is on, the recent-apps preview of SmartTrade is hidden (Android 13 and newer)."
     )
 }
 

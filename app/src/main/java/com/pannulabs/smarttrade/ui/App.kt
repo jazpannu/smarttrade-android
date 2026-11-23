@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pannulabs.smarttrade.ConnState
 import com.pannulabs.smarttrade.EngineViewModel
+import com.pannulabs.smarttrade.LockViewModel
 
 private data class Dest(val label: String, val icon: ImageVector)
 
@@ -49,7 +50,7 @@ private val DESTS = listOf(
 )
 
 @Composable
-fun App(vm: EngineViewModel) {
+fun App(vm: EngineViewModel, lock: LockViewModel, verify: (String, () -> Unit) -> Unit) {
     val conn by vm.conn.collectAsStateWithLifecycle()
     val st by vm.state.collectAsStateWithLifecycle()
     val toast by vm.toast.collectAsStateWithLifecycle()
@@ -97,6 +98,7 @@ fun App(vm: EngineViewModel) {
                     onSave = { section, patch -> vm.saveSettings(section, patch) },
                     onSaveKeys = vm::saveKeys,
                     toast = { /* shown through the view model so it survives recomposition */ msg -> vm.showToast(msg) },
+                    lock = lock, verify = verify,
                 )
             }
         }
