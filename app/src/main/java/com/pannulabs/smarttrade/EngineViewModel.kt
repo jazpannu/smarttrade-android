@@ -29,6 +29,19 @@ class EngineViewModel(app: Application) : AndroidViewModel(app) {
     private val _toast = MutableStateFlow<String?>(null)
     val toast: StateFlow<String?> = _toast.asStateFlow()
 
+    /** Full trade history for the Excel View (the engine's trade_log; falls back to the last 500 pushed trades). */
+    private val _journal = MutableStateFlow<List<JTrade>>(emptyList())
+    val journal: StateFlow<List<JTrade>> = _journal.asStateFlow()
+
+    fun loadJournal() {
+        val c = client ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            c.request("trade_log")
+                .onSuccess { r -> _journal.value = r.optJSONArray("trades").objects().map(::journalTrade) }
+                .onFailure { _journal.value = _state.value.rawTrades.map(::journalTrade) }
+        }
+    }
+
     /** Compose state, so the Settings page updates when a code is saved or forgotten. */
     var hasCode by mutableStateOf(codes.get() != null)
         private set
@@ -46,7 +59,11 @@ class EngineViewModel(app: Application) : AndroidViewModel(app) {
         if (save) { codes.set(code.trim()); hasCode = true }
         client?.stop()
         client = EngineClient(info, viewModelScope + Dispatchers.IO,
-            onPush = { msg -> _state.update { it.merge(msg) } },
+            onPush = { msg ->
+                _state.update { it.merge(msg) }
+                val t = msg.optString("type")
+                if (t == "hello" || (t == "tables" && msg.has("trades"))) loadJournal()   // keep the Excel View current
+            },
             onConn = { s, d -> _conn.value = Conn(s, d) }).also { it.start() }
         return null
     }

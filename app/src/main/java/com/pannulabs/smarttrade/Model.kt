@@ -46,6 +46,14 @@ data class Trade(
     }
 }
 
+/** A trade from the engine's trade_log command, for the Excel View (balance/risk are null on older trades). */
+fun journalTrade(o: JSONObject) = JTrade(
+    o.optInt("id"), o.str("symbol"), o.str("side"), o.str("mode"), o.str("status"), o.num("qty"),
+    o.num("entry_price"), o.num("sl_price"), o.num("entry_fee"), o.numOrNull("exit_fee"), o.numOrNull("exit_price"),
+    o.numOrNull("net_pnl"), o.long("opened_ms"), if (o.has("closed_ms") && !o.isNull("closed_ms")) o.long("closed_ms") else null,
+    o.numOrNull("account_balance"), o.numOrNull("risk_usd"),
+)
+
 data class Skip(val timeMs: Long, val symbol: String, val side: String, val reason: String) {
     companion object {
         fun from(o: JSONObject) = Skip(o.long("time_ms"), o.str("symbol"), o.str("side"), o.str("reason"))
@@ -82,6 +90,7 @@ data class EngineState(
     val scanner: JSONObject = JSONObject(),
     val notes: List<Note> = emptyList(),
     val trades: List<Trade> = emptyList(),
+    val rawTrades: List<JSONObject> = emptyList(),
     val skips: List<Skip> = emptyList(),
     val openSignals: List<SignalRow> = emptyList(),
     val closedSignals: List<SignalRow> = emptyList(),
@@ -101,6 +110,7 @@ data class EngineState(
 
     fun withTables(o: JSONObject): EngineState = copy(
         trades = if (o.has("trades")) o.optJSONArray("trades").objects().map(Trade::from) else trades,
+        rawTrades = if (o.has("trades")) o.optJSONArray("trades").objects() else rawTrades,
         skips = if (o.has("skips")) o.optJSONArray("skips").objects().map(Skip::from) else skips,
         openSignals = if (o.has("open_signals")) o.optJSONArray("open_signals").objects().map(SignalRow::from) else openSignals,
         closedSignals = if (o.has("closed_signals")) o.optJSONArray("closed_signals").objects().map(SignalRow::from) else closedSignals,

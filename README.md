@@ -2,7 +2,10 @@
 
 Android control app for PannuLabs's SmartTrade System engine. It does what the Windows control panel does:
 dashboard with open positions (close one / close all, pause new trades), scanner signals, activity log,
-trade history and all settings (connection, trading, scanner, Binance API keys).
+trade history, the Excel View (trade journal, monthly/yearly summaries, .xlsx export) and all settings
+(connection, trading, scanner, Binance API keys). Settings is the gear icon at the top right.
+
+Bundles the PannuLabs logo and the Inter font (SIL Open Font License, see `Inter-LICENSE.txt`).
 
 ## Connect
 On the server running the engine, create a code for the phone:

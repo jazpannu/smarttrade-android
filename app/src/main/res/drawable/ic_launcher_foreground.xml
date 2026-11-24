@@ -1,5 +1,4 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#27c281" android:pathData="M30,70 L46,52 L56,62 L78,36 L78,46 L56,72 L46,62 L36,74 Z"/>
-    <path android:fillColor="#3d8bfd" android:pathData="M70,36 L80,34 L78,44 Z"/>
-</vector>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PannuLabs logo, inside the adaptive icon's safe zone -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/ic_launcher_fg" android:gravity="fill" android:filter="true"/>

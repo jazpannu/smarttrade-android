@@ -1,25 +1,35 @@
 package com.pannulabs.smarttrade.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.ListAlt
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.outlined.ListAlt
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Radar
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.TableChart
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -43,18 +53,21 @@ import com.pannulabs.smarttrade.LockViewModel
 
 private data class Dest(val label: String, val icon: ImageVector)
 
+private const val SETTINGS = 5
+
 private val DESTS = listOf(
-    Dest("Dashboard", Icons.Filled.Dashboard), Dest("Signals", Icons.Filled.ListAlt),
-    Dest("Activity", Icons.Filled.Notifications), Dest("History", Icons.Filled.History),
-    Dest("Settings", Icons.Filled.Settings),
+    Dest("Dashboard", Icons.Outlined.GridView), Dest("Signals", Icons.Outlined.Radar),
+    Dest("Activity", Icons.AutoMirrored.Outlined.ListAlt), Dest("History", Icons.Outlined.History),
+    Dest("Excel", Icons.Outlined.TableChart),
 )
 
 @Composable
 fun App(vm: EngineViewModel, lock: LockViewModel, verify: (String, () -> Unit) -> Unit) {
     val conn by vm.conn.collectAsStateWithLifecycle()
     val st by vm.state.collectAsStateWithLifecycle()
+    val journal by vm.journal.collectAsStateWithLifecycle()
     val toast by vm.toast.collectAsStateWithLifecycle()
-    var page by rememberSaveable { mutableIntStateOf(if (vm.hasCode) 0 else 4) }
+    var page by rememberSaveable { mutableIntStateOf(if (vm.hasCode) 0 else SETTINGS) }
     val snack = remember { SnackbarHostState() }
     val connected = conn.state == ConnState.CONNECTED
 
@@ -64,17 +77,20 @@ fun App(vm: EngineViewModel, lock: LockViewModel, verify: (String, () -> Unit) -
 
     Scaffold(
         containerColor = Bg,
-        snackbarHost = { SnackbarHost(snack) },
-        topBar = { TopBar(st.modeBadge, conn.state, DESTS[page].label) },
+        snackbarHost = { SnackbarHost(snack) { data -> Toast(data.visuals.message) } },
+        topBar = {
+            TopBar(st.modeBadge, conn.state, if (page == SETTINGS) "Settings" else DESTS[page].label,
+                settingsOpen = page == SETTINGS, onSettings = { page = if (page == SETTINGS) 0 else SETTINGS })
+        },
         bottomBar = {
-            NavigationBar(containerColor = Panel) {
+            NavigationBar(containerColor = Panel, tonalElevation = 0.dp) {
                 DESTS.forEachIndexed { i, d ->
                     NavigationBarItem(
                         selected = page == i, onClick = { page = i },
                         icon = { Icon(d.icon, contentDescription = d.label) },
-                        label = { Text(d.label, fontSize = 10.sp, maxLines = 1) },
+                        label = { Text(d.label, fontSize = 10.sp, maxLines = 1, fontWeight = if (page == i) FontWeight.SemiBold else FontWeight.Normal) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = TextC, selectedTextColor = TextC, indicatorColor = Panel2,
+                            selectedIconColor = Brand, selectedTextColor = TextC, indicatorColor = Brand.copy(alpha = 0.14f),
                             unselectedIconColor = Muted, unselectedTextColor = Muted,
                         ),
                     )
@@ -88,6 +104,7 @@ fun App(vm: EngineViewModel, lock: LockViewModel, verify: (String, () -> Unit) -
                 1 -> SignalsScreen(st)
                 2 -> ActivityScreen(st)
                 3 -> HistoryScreen(st)
+                4 -> ExcelScreen(journal, connected, onRefresh = vm::loadJournal, toast = vm::showToast)
                 else -> SettingsScreen(
                     st, conn, vm.hasCode,
                     onConnect = { code ->
@@ -106,21 +123,50 @@ fun App(vm: EngineViewModel, lock: LockViewModel, verify: (String, () -> Unit) -
 }
 
 @Composable
-private fun TopBar(badge: String, state: ConnState, title: String) {
+private fun TopBar(badge: String, state: ConnState, title: String, settingsOpen: Boolean, onSettings: () -> Unit) {
     val (txt, col) = stateText(state)
-    Column(Modifier.fillMaxWidth().background(Panel).statusBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("SmartTrade", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = TextC)
+    Column(Modifier.fillMaxWidth().background(Bg).statusBarsPadding()) {
+        Row(Modifier.padding(start = 14.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            BrandLogo(30)
             Spacer(Modifier.width(8.dp))
-            Text(title, color = Muted, fontSize = 14.sp)
+            Column {
+                BrandWordmark(17)
+                Text("SMARTTRADE", color = Muted, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp)
+            }
             Spacer(Modifier.weight(1f))
             when (badge) {
-                "PAPER" -> Badge("PAPER", Accent)
+                "PAPER" -> Badge("PAPER", Blue)
                 "DEMO" -> Badge("DEMO", Amber)
                 "LIVE" -> Badge("LIVE", Red)
             }
+            IconButton(onClick = onSettings) {
+                Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = if (settingsOpen) Brand else Muted)
+            }
         }
-        Spacer(Modifier.padding(top = 4.dp))
-        Dot(col, txt)
+        Row(Modifier.padding(horizontal = 14.dp).padding(top = 2.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, color = TextC, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            Dot(col, txt)
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Border))
+    }
+}
+
+/** Snackbar styled like the panel's corner toasts: icon, coloured edge. */
+@Composable
+private fun Toast(text: String) {
+    val bad = listOf("fail", "error", "could not", "not connected", "invalid").any { text.contains(it, ignoreCase = true) }
+    val col = if (bad) Red else Brand
+    Snackbar(
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        containerColor = Panel2, contentColor = TextC, shape = RoundedCornerShape(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.width(3.dp).height(22.dp).background(col, RoundedCornerShape(2.dp)))
+            Spacer(Modifier.width(10.dp))
+            Icon(if (bad) Icons.Outlined.ErrorOutline else Icons.Outlined.CheckCircle, null, tint = col, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(text, fontSize = 13.sp)
+        }
     }
 }
