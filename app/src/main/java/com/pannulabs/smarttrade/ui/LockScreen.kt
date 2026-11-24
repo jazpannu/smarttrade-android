@@ -29,8 +29,12 @@ fun LockScreen(message: String?, onUnlock: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(Icons.Filled.Fingerprint, contentDescription = null, tint = Accent, modifier = Modifier.size(72.dp))
-        Spacer(Modifier.height(16.dp))
+        BrandLogo(88)
+        Spacer(Modifier.height(10.dp))
+        BrandWordmark(26)
+        Spacer(Modifier.height(28.dp))
+        Icon(Icons.Filled.Fingerprint, contentDescription = null, tint = Brand, modifier = Modifier.size(52.dp))
+        Spacer(Modifier.height(12.dp))
         Text("SmartTrade is locked", color = TextC, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
         MutedText("Your engine keeps running on the server.")
@@ -39,6 +43,8 @@ fun LockScreen(message: String?, onUnlock: () -> Unit) {
             Text(it, color = Red, fontSize = 13.sp, textAlign = TextAlign.Center)
         }
         Spacer(Modifier.height(24.dp))
-        Button(onClick = onUnlock) { Text("Unlock") }
+        Button(onClick = onUnlock, shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
+            Text("Unlock", fontWeight = FontWeight.Bold)
+        }
     }
 }

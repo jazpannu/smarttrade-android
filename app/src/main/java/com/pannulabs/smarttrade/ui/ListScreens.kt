@@ -10,8 +10,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ListAlt
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Radar
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,9 +36,13 @@ import com.pannulabs.smarttrade.long
 import com.pannulabs.smarttrade.num
 
 @Composable
-private fun Tabs(titles: List<String>, selected: Int, onSelect: (Int) -> Unit) {
-    TabRow(selectedTabIndex = selected, containerColor = Bg, contentColor = TextC) {
-        titles.forEachIndexed { i, t -> Tab(selected = i == selected, onClick = { onSelect(i) }, text = { Text(t, fontSize = 13.sp) }) }
+fun Tabs(titles: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+    TabRow(selectedTabIndex = selected, containerColor = Bg, contentColor = TextC, divider = {},
+        indicator = { pos -> TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(pos[selected]), color = Brand) }) {
+        titles.forEachIndexed { i, t ->
+            Tab(selected = i == selected, onClick = { onSelect(i) }, selectedContentColor = TextC, unselectedContentColor = Muted,
+                text = { Text(t, fontSize = 13.sp, fontWeight = if (i == selected) FontWeight.SemiBold else FontWeight.Normal) })
+        }
     }
 }
 
@@ -44,7 +55,7 @@ fun SignalsScreen(st: EngineState) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             val ready = sc.optBoolean("ready")
             CardRow(
-                { StatCard("Coins scanned", if (ready) sc.optInt("coins").toString() else "loading...", "${sc.optInt("open_signals")} open signals", it) },
+                { StatCard("Coins scanned", if (ready) sc.optInt("coins").toString() else "loading...", "${sc.optInt("open_signals")} open signals", it, accent = Blue) },
                 {
                     if (sc.has("ws_connections")) {
                         val n = sc.optInt("ws_connections"); val ok = sc.optInt("ws_connected")
@@ -57,11 +68,11 @@ fun SignalsScreen(st: EngineState) {
             val wins = closed.count { it.netPct > 0 }
             CardRow(
                 { StatCard("Last 6h scan", ts(sc.long("last_boundary_ms")).ifEmpty { "-" },
-                    "stop ${price(sc.num("sl_min_pct"))}-${price(sc.num("sl_max_pct"))}%", it) },
+                    "stop ${price(sc.num("sl_min_pct"))}-${price(sc.num("sl_max_pct"))}%", it, accent = Amber) },
                 {
                     if (closed.isEmpty()) StatCard("Signal track record", "-", "no closed signals yet", it)
                     else StatCard("Signal track record", String.format("%+.1f%%", net),
-                        "last ${closed.size}: $wins wins (${wins * 100 / closed.size}%)", it, pnlColor(net))
+                        "last ${closed.size}: $wins wins (${wins * 100 / closed.size}%)", it, pnlColor(net), trend = net)
                 },
             )
         }
@@ -69,11 +80,11 @@ fun SignalsScreen(st: EngineState) {
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { Spacer(Modifier.height(4.dp)) }
             if (tab == 0) {
-                if (st.openSignals.isEmpty()) item { Empty("No open signals") }
+                if (st.openSignals.isEmpty()) item { Empty("No open signals right now", Icons.Outlined.Radar) }
                 items(st.openSignals) { s -> OpenSignalCard(s) }
             } else {
                 item { MutedText("Net % after fees and slippage, without leverage. Newest first.") }
-                if (st.closedSignals.isEmpty()) item { Empty("No closed signals yet") }
+                if (st.closedSignals.isEmpty()) item { Empty("No closed signals yet", Icons.Outlined.History) }
                 items(st.closedSignals) { s -> ClosedSignalCard(s) }
             }
             item { Spacer(Modifier.height(12.dp)) }
@@ -102,7 +113,7 @@ private fun ClosedSignalCard(s: SignalRow) = ListCard {
         Text(s.symbol, fontWeight = FontWeight.Bold, color = TextC, fontSize = 15.sp)
         Spacer(Modifier.padding(start = 8.dp)); SideText(s.side)
         Spacer(Modifier.weight(1f))
-        Text(String.format("%+.2f%%", s.netPct), color = pnlColor(s.netPct), fontWeight = FontWeight.Bold)
+        Pill(String.format("%+.2f%%", s.netPct), pnlColor(s.netPct))
     }
     Spacer(Modifier.height(6.dp))
     Row(Modifier.fillMaxWidth()) {
@@ -124,16 +135,16 @@ fun ActivityScreen(st: EngineState) {
             item { Spacer(Modifier.height(6.dp)) }
             if (tab == 0) {
                 val notes = st.notes.asReversed()
-                if (notes.isEmpty()) item { Empty("Nothing yet") }
+                if (notes.isEmpty()) item { Empty("Nothing yet", Icons.AutoMirrored.Outlined.ListAlt) }
                 items(notes) { n ->
-                    val col = when (n.kind) { "error" -> Red; "open" -> Green; "close" -> Accent; "skip" -> Amber; else -> TextC }
+                    val col = when (n.kind) { "error" -> Red; "open" -> Green; "close" -> Blue; "skip" -> Amber; else -> TextC }
                     Column {
                         MutedText("${tsSec(n.timeMs)}  [${n.kind}]")
                         Text(n.text, color = col, fontSize = 13.sp)
                     }
                 }
             } else {
-                if (st.skips.isEmpty()) item { Empty("No skipped signals") }
+                if (st.skips.isEmpty()) item { Empty("No skipped signals", Icons.Outlined.CheckCircle) }
                 items(st.skips) { s ->
                     ListCard {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -159,10 +170,10 @@ fun HistoryScreen(st: EngineState) {
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { Spacer(Modifier.height(6.dp)) }
         item {
-            if (done.isEmpty()) MutedText("No closed trades yet")
+            if (done.isEmpty()) Empty("No closed trades yet", Icons.Outlined.History)
             else CardRow(
                 { StatCard("Closed trades", done.size.toString(), "$wins winners (${wins * 100 / done.size}%)", it) },
-                { StatCard("Net P&L", money(net, true), "USDT, after fees", it, pnlColor(net)) },
+                { StatCard("Net P&L", money(net, true), "USDT, after fees", it, pnlColor(net), trend = net) },
             )
         }
         items(done, key = { it.id }) { t ->
@@ -172,7 +183,7 @@ fun HistoryScreen(st: EngineState) {
                     Spacer(Modifier.padding(start = 8.dp)); SideText(t.side)
                     Spacer(Modifier.padding(start = 8.dp)); MutedText(t.mode)
                     Spacer(Modifier.weight(1f))
-                    Text(money(t.netPnl, true), color = pnlColor(t.netPnl), fontWeight = FontWeight.Bold)
+                    Pill(money(t.netPnl, true), pnlColor(t.netPnl))
                 }
                 Spacer(Modifier.height(6.dp))
                 Row(Modifier.fillMaxWidth()) {

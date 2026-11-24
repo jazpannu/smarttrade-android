@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -26,6 +25,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.HourglassEmpty
 import com.pannulabs.smarttrade.EngineState
 import com.pannulabs.smarttrade.Position
 
@@ -50,37 +53,42 @@ fun DashboardScreen(
                     modifier = Modifier.weight(1f))
                 Switch(
                     checked = !st.paused, enabled = connected, onCheckedChange = { onPause(!it) },
-                    colors = SwitchDefaults.colors(checkedTrackColor = Green),
+                    colors = SwitchDefaults.colors(checkedTrackColor = Brand, checkedThumbColor = OnBrand,
+                        uncheckedTrackColor = Panel2, uncheckedBorderColor = Border),
                 )
                 Spacer(Modifier.padding(start = 10.dp))
-                Button(
-                    onClick = { confirmAll = true }, enabled = connected,
-                    colors = ButtonDefaults.buttonColors(containerColor = Red),
+                OutlinedButton(
+                    onClick = { confirmAll = true }, enabled = connected, border = BorderStroke(1.dp, if (connected) Red else Faint),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Red),
                 ) { Text("CLOSE ALL", fontWeight = FontWeight.Bold) }
             }
         }
         if (st.brokerError.isNotEmpty()) item { Text("Trading: ${st.brokerError}", color = Amber, fontSize = 13.sp) }
         if (snap == null) {
-            item { Empty(if (connected) "Waiting for the first account update..." else "Not connected to the engine") }
+            item {
+                Empty(if (connected) "Waiting for the first account update..." else "Not connected to the engine",
+                    if (connected) Icons.Outlined.HourglassEmpty else Icons.Outlined.CloudOff)
+            }
         } else {
             val openPnl = snap.positions.sumOf { it.unrealized }
             item {
                 CardRow(
-                    { StatCard("Equity", money(snap.equity), "USDT, sizing on ${money(snap.sizingBase)}", it) },
+                    { StatCard("Equity", money(snap.equity), "USDT, sizing on ${money(snap.sizingBase)}", it, accent = Blue) },
                     {
                         StatCard("Position value used", if (snap.sizingBase > 0) String.format("%.2fx", snap.used / snap.sizingBase) else "-",
-                            "${money(snap.used)} of ${money(snap.capacity)} (${snap.positions.size}/$maxTrades trades)", it)
+                            "${money(snap.used)} of ${money(snap.capacity)} (${snap.positions.size}/$maxTrades trades)", it, accent = Amber)
                     },
                 )
             }
             item {
                 CardRow(
-                    { StatCard("Open P&L", money(openPnl, true), "before exit fee", it, pnlColor(openPnl)) },
-                    { StatCard("Today's realized P&L", money(snap.todayRealized, true), "after fees & slippage", it, pnlColor(snap.todayRealized)) },
+                    { StatCard("Open P&L", money(openPnl, true), "before exit fee", it, pnlColor(openPnl), trend = openPnl) },
+                    { StatCard("Today's realized", money(snap.todayRealized, true), "after fees & slippage", it,
+                        pnlColor(snap.todayRealized), trend = snap.todayRealized) },
                 )
             }
             item { H1("Open positions (${snap.positions.size})", Modifier.padding(top = 6.dp)) }
-            if (snap.positions.isEmpty()) item { Empty("No open positions") }
+            if (snap.positions.isEmpty()) item { Empty("No open positions - new trades appear here") }
             items(snap.positions, key = { it.id }) { p -> PositionCard(p, connected) { confirmOne = p } }
         }
         item { Spacer(Modifier.height(12.dp)) }
@@ -108,8 +116,11 @@ private fun PositionCard(p: Position, connected: Boolean, onClose: () -> Unit) {
             Spacer(Modifier.padding(start = 8.dp))
             SideText(p.side)
             Spacer(Modifier.weight(1f))
-            Text(money(p.unrealized, true), color = pnlColor(p.unrealized), fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text("  " + String.format("%+.2f%%", p.unrealizedPct), color = pnlColor(p.unrealized), fontSize = 13.sp)
+            Column(horizontalAlignment = Alignment.End) {
+                Text(money(p.unrealized, true), color = pnlColor(p.unrealized), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(Modifier.height(2.dp))
+                Pill(String.format("%+.2f%%", p.unrealizedPct), pnlColor(p.unrealized), 11)
+            }
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth()) {
