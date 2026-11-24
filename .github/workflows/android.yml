@@ -24,16 +24,25 @@ jobs:
       - name: Write the signing key
         env:
           SIGNING_KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+          SIGNING_PASSWORD_SECRET: ${{ secrets.SIGNING_PASSWORD }}
         run: |
-          if [ -z "$SIGNING_KEYSTORE_B64" ]; then
-            echo "::error::Add the SIGNING_KEYSTORE_B64 and SIGNING_PASSWORD repo secrets (Settings > Secrets and variables > Actions)."
-            exit 1
+          if [ -n "$SIGNING_KEYSTORE_B64" ] && [ -n "$SIGNING_PASSWORD_SECRET" ]; then
+            echo "$SIGNING_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "SIGNING_PASSWORD=$SIGNING_PASSWORD_SECRET" >> "$GITHUB_ENV"
+          else
+            # No fixed key yet: sign with a random throwaway key so there is still an APK to install.
+            # Each such build has a different key, so installing it over an older one needs an uninstall first.
+            echo "::warning::No SIGNING_KEYSTORE_B64 / SIGNING_PASSWORD secrets - signing with a random one-off key."
+            PW=$(openssl rand -hex 16)
+            echo "::add-mask::$PW"
+            keytool -genkeypair -keystore "$RUNNER_TEMP/release.jks" -storetype PKCS12 -alias smarttrade \
+              -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=SmartTrade test build" \
+              -storepass "$PW" -keypass "$PW" -noprompt
+            echo "SIGNING_PASSWORD=$PW" >> "$GITHUB_ENV"
           fi
-          echo "$SIGNING_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
       - name: Build APK
         env:
           SIGNING_KEYSTORE: ${{ runner.temp }}/release.jks
-          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: ./gradlew --no-daemon assembleRelease
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release.apk SmartTrade-${{ github.sha }}.apk
