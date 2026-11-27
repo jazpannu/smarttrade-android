@@ -137,27 +137,27 @@ private fun PositionCard(p: Position, leverage: Int, connected: Boolean, onShare
     ListCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(26.dp).background(if (long) Green else Red, RoundedCornerShape(6.dp)),
+                Modifier.size(20.dp).background(if (long) Green else Red, RoundedCornerShape(4.dp)),
                 contentAlignment = Alignment.Center,
-            ) { Text(if (long) "B" else "S", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp) }
-            Spacer(Modifier.width(10.dp))
-            Text(p.symbol, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextC)
+            ) { Text(if (long) "B" else "S", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+            Spacer(Modifier.width(8.dp))
+            Text(p.symbol, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextC)
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("PNL (USDT)", color = Muted, fontSize = 13.sp)
+            Text("PNL (USDT)", color = Muted, fontSize = 12.sp)
             Icon(
                 Icons.Outlined.Share, contentDescription = "Share PnL", tint = Muted,
-                modifier = Modifier.padding(start = 6.dp).size(30.dp).clip(RoundedCornerShape(50))
+                modifier = Modifier.padding(start = 4.dp).size(26.dp).clip(RoundedCornerShape(50))
                     .clickable { onShare(roi) }.padding(6.dp),
             )
             Spacer(Modifier.weight(1f))
-            Text("ROI", color = Muted, fontSize = 13.sp)
+            Text("ROI", color = Muted, fontSize = 12.sp)
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(money(p.unrealized, true), color = pnlCol, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            Text(money(p.unrealized, true), color = pnlCol, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Spacer(Modifier.weight(1f))
-            Text(String.format("%+.2f%%", roi), color = pnlCol, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            Text(String.format("%+.2f%%", roi), color = pnlCol, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth()) {
