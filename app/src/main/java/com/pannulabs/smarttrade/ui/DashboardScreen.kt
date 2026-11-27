@@ -31,6 +31,19 @@ import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import com.pannulabs.smarttrade.EngineState
 import com.pannulabs.smarttrade.Position
+import com.pannulabs.smarttrade.PnlShare
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun DashboardScreen(
@@ -41,6 +54,8 @@ fun DashboardScreen(
     var confirmOne by remember { mutableStateOf<Position?>(null) }
     val snap = st.snapshot
     val maxTrades = st.trading.optInt("max_open_trades", 0)
+    val leverage = st.trading.optInt("leverage", 0)
+    val ctx = LocalContext.current
 
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 14.dp),
@@ -89,7 +104,9 @@ fun DashboardScreen(
             }
             item { H1("Open positions (${snap.positions.size})", Modifier.padding(top = 6.dp)) }
             if (snap.positions.isEmpty()) item { Empty("No open positions - new trades appear here") }
-            items(snap.positions.sortedByDescending { it.unrealized }, key = { it.id }) { p -> PositionCard(p, connected) { confirmOne = p } }
+            items(snap.positions.sortedByDescending { it.unrealized }, key = { it.id }) { p ->
+                PositionCard(p, leverage, connected, onShare = { roi -> PnlShare.share(ctx, p, roi) }) { confirmOne = p }
+            }
         }
         item { Spacer(Modifier.height(12.dp)) }
     }
@@ -108,36 +125,66 @@ fun DashboardScreen(
     }
 }
 
+/** Binance-style position card: B/S badge, PnL with share, ROI on margin, size/margin/prices grid, one Close button. */
 @Composable
-private fun PositionCard(p: Position, connected: Boolean, onClose: () -> Unit) {
+private fun PositionCard(p: Position, leverage: Int, connected: Boolean, onShare: (Double) -> Unit, onClose: () -> Unit) {
+    val long = p.side == "LONG"
+    val size = p.qty * p.mark
+    val margin = if (leverage > 0) size / leverage else 0.0
+    // ROI on margin, as Binance shows it (PnL / (position value / leverage)).
+    val roi = if (margin > 0) p.unrealized / margin * 100 else p.unrealizedPct
+    val pnlCol = pnlColor(p.unrealized)
     ListCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(26.dp).background(if (long) Green else Red, RoundedCornerShape(6.dp)),
+                contentAlignment = Alignment.Center,
+            ) { Text(if (long) "B" else "S", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+            Spacer(Modifier.width(10.dp))
+            Text(p.symbol, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextC)
+        }
+        Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(p.symbol, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextC)
-            Spacer(Modifier.padding(start = 8.dp))
-            SideText(p.side)
+            Text("PNL (USDT)", color = Muted, fontSize = 13.sp)
+            Icon(
+                Icons.Outlined.Share, contentDescription = "Share PnL", tint = Muted,
+                modifier = Modifier.padding(start = 6.dp).size(30.dp).clip(RoundedCornerShape(50))
+                    .clickable { onShare(roi) }.padding(6.dp),
+            )
             Spacer(Modifier.weight(1f))
-            Column(horizontalAlignment = Alignment.End) {
-                Text(money(p.unrealized, true), color = pnlColor(p.unrealized), fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Spacer(Modifier.height(2.dp))
-                Pill(String.format("%+.2f%%", p.unrealizedPct), pnlColor(p.unrealized), 11)
-            }
+            Text("ROI", color = Muted, fontSize = 13.sp)
         }
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth()) {
-            KV("Entry", price(p.entry), modifier = Modifier.weight(1f))
-            KV("Mark", price(p.mark), modifier = Modifier.weight(1f))
-            KV("Stop loss", price(p.sl), modifier = Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(6.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            KV("Qty", price(p.qty), modifier = Modifier.weight(1f))
-            KV("Size (USDT)", money(p.qty * p.mark), modifier = Modifier.weight(1f))
-            KV("Opened", ts(p.openedMs), modifier = Modifier.weight(1f))
+            Text(money(p.unrealized, true), color = pnlCol, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            Spacer(Modifier.weight(1f))
+            Text(String.format("%+.2f%%", roi), color = pnlCol, fontWeight = FontWeight.Bold, fontSize = 24.sp)
         }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = onClose, enabled = connected, border = BorderStroke(1.dp, Red),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Red), modifier = Modifier.fillMaxWidth(),
-        ) { Text("Close", fontWeight = FontWeight.Bold) }
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth()) {
+            Cell("Size (USDT)", money(size), Modifier.weight(1f))
+            Cell("Margin (USDT)", if (margin > 0) money(margin) else "-", Modifier.weight(1f))
+            Cell("Opened", ts(p.openedMs), Modifier.weight(1f), end = true)
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth()) {
+            Cell("Entry Price", price(p.entry), Modifier.weight(1f))
+            Cell("Mark Price", price(p.mark), Modifier.weight(1f))
+            Cell("Stop Loss", price(p.sl), Modifier.weight(1f), end = true, color = Red)
+        }
+        Spacer(Modifier.height(14.dp))
+        Button(
+            onClick = onClose, enabled = connected, modifier = Modifier.fillMaxWidth().height(46.dp),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Panel2, contentColor = TextC,
+                disabledContainerColor = Panel2, disabledContentColor = Faint),
+        ) { Text("Close", fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
+    }
+}
+
+@Composable
+private fun Cell(label: String, value: String, modifier: Modifier, end: Boolean = false, color: Color = TextC) {
+    Column(modifier, horizontalAlignment = if (end) Alignment.End else Alignment.Start) {
+        Text(label, color = Muted, fontSize = 12.sp, maxLines = 1)
+        Text(value, color = color, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
