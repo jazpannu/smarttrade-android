@@ -89,7 +89,7 @@ fun DashboardScreen(
             }
             item { H1("Open positions (${snap.positions.size})", Modifier.padding(top = 6.dp)) }
             if (snap.positions.isEmpty()) item { Empty("No open positions - new trades appear here") }
-            items(snap.positions, key = { it.id }) { p -> PositionCard(p, connected) { confirmOne = p } }
+            items(snap.positions.sortedByDescending { it.unrealized }, key = { it.id }) { p -> PositionCard(p, connected) { confirmOne = p } }
         }
         item { Spacer(Modifier.height(12.dp)) }
     }
