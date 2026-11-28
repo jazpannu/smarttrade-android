@@ -113,12 +113,13 @@ fun tsSec(ms: Long): String = if (ms <= 0) "" else tsFmtSec.format(Date(ms))
 // ---- brand ------------------------------------------------------------------------------------------
 /** "Pannu" in brand green, "Labs" in white. */
 @Composable
-fun BrandWordmark(size: Int = 18) = Text(
+fun BrandWordmark(size: Int = 18, tight: Boolean = false) = Text(
     buildAnnotatedString {
         withStyle(SpanStyle(color = Brand)) { append("Pannu") }
         withStyle(SpanStyle(color = Color.White)) { append("Labs") }
     },
     fontFamily = Inter, fontWeight = FontWeight.ExtraBold, fontSize = size.sp,
+    lineHeight = if (tight) (size + 2).sp else androidx.compose.ui.unit.TextUnit.Unspecified,
 )
 
 @Composable

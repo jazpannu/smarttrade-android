@@ -130,8 +130,10 @@ private fun TopBar(badge: String, state: ConnState, title: String, settingsOpen:
             BrandLogo(30)
             Spacer(Modifier.width(8.dp))
             Column {
-                BrandWordmark(17)
-                Text("SMARTTRADE", color = Muted, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp)
+                // Tight line heights: the default 24sp body line height left a big gap between the two lines.
+                BrandWordmark(17, tight = true)
+                Text("SMARTTRADE", color = Muted, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp,
+                    lineHeight = 11.sp)
             }
             Spacer(Modifier.weight(1f))
             when (badge) {

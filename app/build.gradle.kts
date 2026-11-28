@@ -12,8 +12,8 @@ android {
         applicationId = "com.pannulabs.smarttrade"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.3.1"
+        versionCode = 8
+        versionName = "1.3.2"
     }
 
     // One fixed release key, so every new APK installs over the previous one as an update.
